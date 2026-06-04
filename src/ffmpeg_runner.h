@@ -2,7 +2,7 @@
 #define _FFMPEG_RUNNER_
 
 
-#include <string.h>
+#include <stddef.h>
 
 /**
  * Gets the absolute path of a command using 'which' via IPC.
@@ -15,4 +15,4 @@
 int get_path_via_IPC(const char *command, char *output_buffer, size_t buffer_len);
 
 
-#endif /* _FFMPEG_RUNNER_ */
+#endif  // _FFMPEG_RUNNER_

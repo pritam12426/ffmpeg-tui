@@ -33,7 +33,7 @@ typedef struct {
 	char  ffmpeg_path[PATH_MAX];
 	char  ffprobe_path[PATH_MAX];
 
-	log_level_t log_level;
+	Log_level_t log_level;
 	/* positional args */
 
 	char **media_files;
@@ -69,9 +69,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		arguments->log_level = log_get_level();
 		break;
 
-	case 'd':
-		arguments->out_dir = arg;
-		break;
+	case 'd': arguments->out_dir = arg;  break;
+	case 'n': arguments->dry_run = true; break;
 
 	case 'f':
 		strncpy(arguments->ffmpeg_path, arg, PATH_MAX - 1);
@@ -81,10 +80,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 	case 'p':
 		strncpy(arguments->ffprobe_path, arg, PATH_MAX - 1);
 		arguments->ffprobe_path[PATH_MAX - 1] = '\0';
-		break;
-
-	case 'n':
-		arguments->dry_run = true;
 		break;
 
 	case ARGP_KEY_ARGS:
@@ -101,6 +96,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			           FFPANEL);
 
 		/* validate each media file */
+		// TODO: quort the file path in "<path>"
 		for (int i = 0; i < arguments->media_file_count; i++)
 			if (!validate_path(arguments->media_files[i], 1))
 				argp_error(state, "invalid media file: '%s'", arguments->media_files[i]);
@@ -194,23 +190,25 @@ int main(int argc, char *argv[])
 	LOG_DEBUG("dry-run      : %s", G_Arguments.dry_run ? "true" : "false");
 	LOG_DEBUG("media files  : %d", G_Arguments.media_file_count);
 
-	for (int i = 0; i < G_Arguments.media_file_count; i++)
-		LOG_DEBUG("  [%d] %s", i, G_Arguments.media_files[i]);
-
 	Ffprobe_IPC ffprobe = {
-		.filepath      = G_Arguments.media_files[0],
-		.ffprobe_path  = "/Users/pritam/.local/dev-tools/ffmpeg-v8.1/ffprobe",
+		.filepath = "\"/Users/pritam/Music/local/bandeya_rey_bandeya(small).mp3\"",
+		// .filepath = "'./temp14.jpg'",
+		.ffprobe_path = G_Arguments.ffprobe_path,
 		.show_format   = true,
 		.show_streams  = true
 	};
 
-	Ffprobe_result u = { 0 };
+	Ffprobe_result probe_resul = { 0 };
 
-	run_ffprobe_IPC(&ffprobe, &u);
+	run_ffprobe_IPC(&ffprobe, &probe_resul);
 
-	puts(u.raw_json);
+	int x = 5;
 
-	ffprobe_result_free(&u);
+	ffprobe_result_free(&probe_resul);
+
+
+	// puts(u.raw_json);
+
 
 	return 0;
 }

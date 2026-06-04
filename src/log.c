@@ -2,47 +2,87 @@
 
 #include <stdarg.h>
 #include <stdio.h>
-#include <unistd.h>  /* isatty(), fileno() */
+#include <unistd.h> /* isatty(), fileno() */
 
-static log_level_t g_log_level = LOG_LEVEL_INFO;
 
-void log_set_level(log_level_t level)
+#define COLOR_RESET        "\x1b[0m"
+#define COLOR_BOLD_RED     "\x1b[1;31m"
+#define COLOR_BOLD_GREEN   "\x1b[1;32m"
+#define COLOR_BOLD_YELLOW  "\x1b[1;33m"
+#define COLOR_BOLD_BLUE    "\x1b[1;34m"
+#define COLOR_BOLD_MAGENTA "\x1b[1;35m"
+#define COLOR_BOLD_CYAN    "\x1b[1;36m"
+#define COLOR_DIM          "\x1b[2m"
+
+
+static Log_level_t g_log_level = LOG_LEVEL_INFO;
+
+
+static void default_log_handler(Log_level_t level)
 {
-	g_log_level = level;
+	switch (level) {
+	case LOG_LEVEL_INFO:
+		fprintf(stderr, "[INFO ] ");
+		break;
+	case LOG_LEVEL_WARN:
+		fprintf(stderr, "[WARN ] ");
+		break;
+	case LOG_LEVEL_ERROR:
+		fprintf(stderr, "[ERROR] ");
+		break;
+	case LOG_LEVEL_DEBUG:
+		fprintf(stderr, "[DEBUG] ");
+		break;
+	}
 }
 
-log_level_t log_get_level(void)
+static void use_color_log_handler(Log_level_t level)
 {
-	return g_log_level;
+	switch (level) {
+	case LOG_LEVEL_ERROR:
+		fprintf(stderr, "🚨 [" COLOR_BOLD_RED "ERRO " COLOR_RESET "] ");
+		break;
+	case LOG_LEVEL_WARN:
+		fprintf(stderr, "⚠️  [" COLOR_BOLD_YELLOW "WARN " COLOR_RESET "] ");
+		break;
+	case LOG_LEVEL_INFO:
+		fprintf(stderr, "ℹ️  [" COLOR_BOLD_GREEN "INFO " COLOR_RESET "] ");
+		break;
+	case LOG_LEVEL_DEBUG:
+		fprintf(stderr, "🛠️  [" COLOR_BOLD_CYAN "DEBUG" COLOR_RESET "] ");
+		break;
+	default:
+		fprintf(stderr, "[UNKWN] ");
+		break;
+	}
 }
 
-void push_file_log(
-	int         level,
-	const char *color,
-	const char *emoji,
-	const char *level_name,
-	const char *file,
-	int         line,
-	const char *func,
-	const char *fmt,
-	...)
+
+void log_record(Log_level_t level,
+                 const char *file,
+                 int         line,
+                 const char *func,
+                 const char *fmt,
+                 ...)
 {
-	/* Suppress levels above the current threshold.
-	 * ERROR=0 is always shown; DEBUG=3 only when g_log_level==DEBUG. */
-	if (level > (int)g_log_level)
-		return;
+	int use_color = 0;
+	if (level > g_log_level) return;
 
-	/* Strip colors when stderr is not a terminal (e.g. piped to a file). */
-	int         use_color = isatty(fileno(stderr));
-	const char *c         = use_color ? color        : "";
-	const char *reset     = use_color ? COLOR_RESET  : "";
-	const char *dim       = use_color ? COLOR_DIM    : "";
+	if (isatty(fileno(stderr))) {
+		use_color = 1;
+		use_color_log_handler(level);
+	}
+	else default_log_handler(level);
 
-	fprintf(stderr,
-		"%s [%s%-5s%s] %s[%s:%d:%s]%s ",
-		emoji,
-		c, level_name, reset,
-		dim, file, line, func, reset);
+	if (file) {
+		fprintf(stderr,
+			"%s[%s:%d:%s]%s ",
+			use_color ? COLOR_DIM : "",
+			file,
+			line,
+			func,
+			use_color ? COLOR_RESET : "");
+	}
 
 	va_list args;
 	va_start(args, fmt);
@@ -50,4 +90,16 @@ void push_file_log(
 	va_end(args);
 
 	fputc('\n', stderr);
+}
+
+
+void log_set_level(Log_level_t level)
+{
+	g_log_level = level;
+}
+
+
+Log_level_t log_get_level(void)
+{
+	return g_log_level;
 }
