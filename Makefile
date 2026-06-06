@@ -15,11 +15,11 @@ BIN   = ffpanel
 SRC       = $(wildcard src/*.c)
 HEADERS   = $(wildcard src/*.h)
 
-# HEADERS  += $(wildcard src/tui/*.h)
-# HEADERS  += $(wildcard src/tui/widgets/*.h)
+HEADERS  += $(wildcard src/tui/*.h)
+HEADERS  += $(wildcard src/tui/widgets/*.h)
 
-# SRC      += $(wildcard src/tui/*.c)
-# SRC      += $(wildcard src/tui/widgets/*.c)
+SRC      += $(wildcard src/tui/*.c)
+SRC      += $(wildcard src/tui/widgets/*.c)
 
 OUT       = $(SRC:%.c=$(BUILD)/%.o)
 

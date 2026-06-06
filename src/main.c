@@ -11,6 +11,7 @@
 #include "ffprobe_ipc.h"
 #include "log.h"
 #include "project_config.h"
+#include "tui/tui.h"
 
 const char *argp_program_version     = FFPANEL " " FFPANEL_VERSION;
 const char *argp_program_bug_address = FFPANEL_HOMEPAGE_URL "/issues";
@@ -180,35 +181,58 @@ static bool validate_path(const char *path, int type /* 1 = regular file, 2 = di
 
 int main(int argc, char *argv[])
 {
-	/* Parse CLI arguments first so log level is set before any logging. */
-	argp_parse(&argp, argc, argv, 0, 0, &G_Arguments);
+    argp_parse(&argp, argc, argv, 0, 0, &G_Arguments);
 
+    LOG_DEBUG("ffmpeg-path  : %s", G_Arguments.ffmpeg_path);
+    LOG_DEBUG("ffprobe-path : %s", G_Arguments.ffprobe_path);
+    LOG_DEBUG("out-dir      : %s", G_Arguments.out_dir);
+    LOG_DEBUG("dry-run      : %s", G_Arguments.dry_run ? "true" : "false");
+    LOG_DEBUG("media files  : %d", G_Arguments.media_file_count);
 
-	LOG_DEBUG("ffmpeg-path  : %s", G_Arguments.ffmpeg_path);
-	LOG_DEBUG("ffprobe-path : %s", G_Arguments.ffprobe_path);
-	LOG_DEBUG("out-dir      : %s", G_Arguments.out_dir);
-	LOG_DEBUG("dry-run      : %s", G_Arguments.dry_run ? "true" : "false");
-	LOG_DEBUG("media files  : %d", G_Arguments.media_file_count);
+    /* ── run ffprobe on the first file ────────────────────────────── */
+    Ffprobe_IPC probe_cfg = {
+        .ffprobe_path = G_Arguments.ffprobe_path,
+        .filepath     = G_Arguments.media_files[0],
+        .show_format  = true,
+        .show_streams = true,
+    };
 
-	Ffprobe_IPC ffprobe = {
-		.filepath = "\"/Users/pritam/Music/local/bandeya_rey_bandeya(small).mp3\"",
-		// .filepath = "'./temp14.jpg'",
-		.ffprobe_path = G_Arguments.ffprobe_path,
-		.show_format   = true,
-		.show_streams  = true
-	};
+    Ffprobe_result probe_result = { 0 };
+    bool probe_ok = (run_ffprobe_IPC(&probe_cfg, &probe_result) == 0);
 
-	Ffprobe_result probe_resul = { 0 };
+    if (!probe_ok)
+        LOG_WARN("ffprobe failed — file info will be unavailable in TUI");
 
-	run_ffprobe_IPC(&ffprobe, &probe_resul);
+    /* ── build initial app state ──────────────────────────────────── */
+    App_state state = {
+        .input_file  = G_Arguments.media_files[0],
+        .out_dir     = G_Arguments.out_dir,
+        .ffmpeg_path = G_Arguments.ffmpeg_path,
+        .dry_run     = G_Arguments.dry_run,
+        .probe       = probe_result,
+        .probe_done  = probe_ok,
+    };
 
-	int x = 5;
+    /* ── enter TUI loop ───────────────────────────────────────────── */
+    char ffmpeg_cmd[4096] = { 0 };
+    int  result           = tui_run(&state, ffmpeg_cmd, sizeof(ffmpeg_cmd));
 
-	ffprobe_result_free(&probe_resul);
+    /* cleanup probe memory after TUI exits */
+    ffprobe_result_free(&probe_result);
 
+    /* ── output result ────────────────────────────────────────────── */
+    if (result == 0 && ffmpeg_cmd[0] != '\0') {
+        /*
+         * Shell wrapper sources our stdout.
+         * In dry-run mode prefix with # so the shell ignores it.
+         */
+        if (G_Arguments.dry_run)
+            printf("# DRY RUN:\n# %s\n", ffmpeg_cmd);
+        else
+            printf("%s\n", ffmpeg_cmd);
 
-	// puts(u.raw_json);
+        return 0;
+    }
 
-
-	return 0;
+    return 1;   /* user aborted */
 }

@@ -4,8 +4,8 @@
 
 #define FFPANEL "ffpanel"
 
-#define FFPANEL_VERSION          "0.1.0"
-#define FFPANEL_VERSION_MAJOR    0
+#define FFPANEL_VERSION          "1.1.0"
+#define FFPANEL_VERSION_MAJOR    1
 #define FFPANEL_VERSION_MINOR    1
 #define FFPANEL_VERSION_PATCH    0
 
